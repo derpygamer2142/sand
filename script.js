@@ -121,7 +121,7 @@ class Type {//[0,false,false,false,false,"#ffffff",false,false,Infinity]
         color: "#eb8d0e",
         flammable: false,
         gas: true,
-        lifetime: Infinity
+        lifetime: 15
     }//[4,false,true,true,false,"#eb8d0e",false,true,30]
     static SMOKE = {
         type: 5,
@@ -132,7 +132,7 @@ class Type {//[0,false,false,false,false,"#ffffff",false,false,Infinity]
         color: "#707070",
         flammable: false,
         gas: true,
-        lifetime: Infinity
+        lifetime: 15
     }//[5,false,true,true,false,"#707070",false,true,30]
 }
 
@@ -203,32 +203,48 @@ setInterval(() => {
             //const y = (scene[0].length - fy) - 1
             if (scene[x][y].type !== 0) {
                 ctx.fillStyle = scene[x][y]?.color ?? "rgb(0,255,0)"
-                ctx.fillRect(x*scale,Math.floor(((y / 100) * canv.height)/scale) * scale, scale, scale)
+                ctx.fillRect(x*scale,/*Math.floor(((y / 100) * canv.height)/scale) * scale*/y*scale, scale, scale)
 
 
-                if (isFinite(scene[x][y].lifetime)) {
-                    next[x][y].lifetime -= 1
+                if (isFinite(scene[x][y].lifetime) || isNaN(scene[x][y].lifetime)) {
+                    if (isNaN(scene[x][y].lifetime)) {
+                        console.warn("there is a NaN lifetime at ",x,y)
+                        next[x][y].color = "#00ff00"
+                    }
+                    
                     const lt = scene[x][y].lifetime
                     if (lt < 0) {
                         if (scene[x][y].type === Type.AIR.type) {
                             next[x][y] = newParticle(Type.AIR)
                         }
                         else if (scene[x][y].type === Type.FIRE.type) {
-                            if (Math.round(Math.random())) {
+                            if (!Math.round(Math.random())) {
                                 next[x][y] = newParticle(Type.SMOKE)
+                                console.log("new smoke from fire")
+                                continue
                             }
                             else {
                                 next[x][y] = newParticle(Type.AIR)
+                                continue
                             }
                         }
                         else if (scene[x][y].type === Type.WOOD.type) {
-                            if (Math.round(Math.random())) {
+                            if (!Math.round(Math.random())) {
                                 next[x][y] = newParticle(Type.SMOKE)
+                                continue
                             }
                             else {
                                 next[x][y] = newParticle(Type.FIRE)
+                                continue
                             }
                         }
+                        else if (scene[x][y].type === Type.SMOKE.type) {
+                            next[x][y] = newParticle(Type.AIR)
+                            continue
+                        }
+                    }
+                    else {
+                        next[x][y].lifetime -= 1
                     }
                 }
 
@@ -245,7 +261,7 @@ setInterval(() => {
                     }
                     else if (inBounds(x+1) && inBounds(y+1) && !scene[x+1][y+1].solid && scene[x][y].spread && scene[x][y].gravity) {
                         swap(x+1,y+1,x,y)
-                    }
+                    }x
 
                     if (scene[x][y].flammable && scene[x][y].lifetime < 16 && inBounds(y-1)) {
                         if (scene[x][y-1].type === Type.AIR.type && Math.random() < 0.3) next[x][y-1] = newParticle(Type.FIRE)
@@ -277,7 +293,7 @@ setInterval(() => {
                         else swap(x+1,y+1,x,y)
                     }
 
-                    else if (inBounds(x-1) && scene[x-1][y]?.type !== scene[x][y].type && !scene[x-1][y].solid && scene[x][y].spread && (scene[x-1][y]?.type === Type.AIR.type || scene[x-1][y]?.type === Type.FIRE.type)) {
+                    else if (inBounds(x-1) && (scene[x-1][y]?.type !== scene[x][y].type) && !scene[x-1][y].solid && scene[x][y].spread && (scene[x-1][y]?.type === Type.AIR.type || scene[x-1][y]?.type === Type.FIRE.type)) {
                         if (scene[x-1][y].type === Type.FIRE.type) next[x-1][y].lifetime = 0
                         else swap(x-1,y,x,y)
                     }
@@ -358,8 +374,9 @@ setInterval(() => {
     ctx.lineWidth = 5
     ctx.font = "25px Arial"
     ctx.strokeRect(xi*scale,Math.floor(((yi / 100) * canv.height)/scale) * scale, scale, scale)
-    ctx.fillText(scene[xi][yi].type,xi*scale + 10,Math.floor(((yi / 100) * canv.height)/scale) * scale + 25 + scale)
-    ctx.fillText(scene[xi][yi].color,xi*scale + 10,Math.floor(((yi / 100) * canv.height)/scale) * scale + 50 + scale)
+    ctx.fillText(JSON.stringify(scene[xi][yi]),xi*scale + 10,Math.floor(((yi / 100) * canv.height)/scale) * scale + 25 + scale)
+    //ctx.fillText(scene[xi][yi].color,xi*scale + 10,Math.floor(((yi / 100) * canv.height)/scale) * scale + 50 + scale)
+    //ctx.fillText(scene[xi][yi].lifetime,xi*scale + 10,Math.floor(((yi / 100) * canv.height)/scale) * scale + 75 + scale)
     scene = structuredClone(next)
     //console.log(scene)
 },(1 / 60) * 1000)
