@@ -15,9 +15,11 @@ let next = [
 ]
 
 let mouseDown = false
+let lastMouse = false
 let mouseX = 0
 let mouseY = 0
 let element = 1
+let brushSize = 1
 
 document.addEventListener("mousedown", (e) => {mouseDown = true})
 document.addEventListener("mouseup", (e) => {mouseDown = false})
@@ -158,41 +160,98 @@ for (let x = 0; x < scale * 100; x += scale) {
     scene.push(column)
 }
 
+function clamp(a,b,c) { return Math.max(Math.min(a,c),b) }
+
+function fill(x, y, radius, type) {
+    for (let xi = clamp(x - radius, 0, 100); xi >= 0 && xi < 100 && xi < x+radius; xi++ ) {
+        for (let yi = clamp(y - radius, 0, 100); yi >= 0 && yi < 100; yi++ ) {
+            if (Math.sqrt((xi-x)**2 + (yi-y)**2) < radius) {
+                scene[xi][yi] = newParticle(type)
+            }
+        }
+    }
+}
 
 setInterval(() => {
     ctx.fillStyle = "white"
     ctx.fillRect(0,0,canv.width,canv.height)
-    const xi = Math.min(Math.max(Math.floor((mouseX / (scale))),0),99)
-    const yi = Math.floor((mouseY / canv.height) * 100)
-    if (mouseDown) {
+    const xi = Math.floor((mouseX / (scale)))
+    const yi = Math.floor((mouseY / (scale))) // Math.floor((mouseY / canv.height) * 100)
+    const xic = Math.min(Math.max(xi,0),99)
+    const yic = Math.min(Math.max(yi,0),99)
+
+    
+    Object.values(Type).forEach((t, i) => {
+        ctx.strokeStyle = i == element ? "#c49e14" : "#7d7d7d"
+        ctx.lineWidth = scale
+        ctx.strokeRect((101*scale),(i*scale*13),scale*10,scale*10)
+        ctx.fillStyle = "#a3a3a3"
+        ctx.fillRect((101*scale),(i*scale*13),scale*10,scale*10)
+
+        ctx.fillStyle = t.color
+        ctx.fillRect((101.5*scale),(i*scale*13) + scale*0.5,scale*9,scale*9)
+
+        if (clamp(mouseX, (101.5*scale), (110.5*scale)) == mouseX && clamp(mouseY, (i*scale*13) + scale*0.5, (i*scale*13) + scale*9.5) == mouseY && mouseDown && !lastMouse) {
+            element = i
+        }
+    })
+    let y = 5*scale
+    for (let i = 1; i < 14; i+=2) {
+        const x = 135*scale
+        y += (i*scale*2)
+        
+        if (Math.sqrt((x - mouseX)**2 + (y - mouseY)**2) < i*scale && mouseDown && !lastMouse) {
+            brushSize = i
+        }
+
+        ctx.fillStyle = "#000000"
+        ctx.beginPath()
+        ctx.arc(x,y,i*scale,0,Math.PI*2)
+        if (i == brushSize) {
+            ctx.strokeStyle = "#c49e14"
+            ctx.stroke()
+        }
+        ctx.fill()
+    }
+    
+    
+
+    if (mouseDown && mouseX < (100 * scale)) {
         
 
-        if (scene[xi][yi].type === Type.AIR.type) {
-            switch (element) {
-                case 1: {
-                    scene[xi][yi] = newParticle(Type.GROUND)
-                    //console.log(scene[xi][yi])
-                    break;
-                }
-                case 2: {
-                    scene[xi][yi] = newParticle(Type.WATER)
-                    break;
-                }
-                case 3: {
-                    scene[xi][yi] = newParticle(Type.WOOD)
-                    break;
-                }
-                case 4: {
-                    scene[xi][yi] = newParticle(Type.FIRE)
-                    break;
-                }
-                case 5: {
-                    scene[xi][yi] = newParticle(Type.SMOKE)
-                    break;
-                }
+        //if (scene[xic][yic].type === Type.AIR.type) {
+        switch (element) {
+            case 0: {
+                //scene[xic][yic] = newParticle(Type.AIR)
+                fill(xi,yi,brushSize,Type.AIR)
+                //console.log(scene[xic][yic])
+                break;
             }
-            
+            case 1: {
+                //scene[xic][yic] = newParticle(Type.GROUND)
+                fill(xi,yi,brushSize,Type.GROUND)
+                //console.log(scene[xic][yic])
+                break;
+            }
+            case 2: {
+                fill(xi,yi,brushSize,Type.WATER)
+                break;
+            }
+            case 3: {
+                fill(xi,yi,brushSize,Type.WOOD)
+                break;
+            }
+            case 4: {
+                fill(xi,yi,brushSize,Type.FIRE)
+                break;
+            }
+            case 5: {
+                fill(xi,yi,brushSize,Type.SMOKE)
+                break;
+            }
         }
+            
+        //}
     }
 
     next = structuredClone(scene)
@@ -373,10 +432,12 @@ setInterval(() => {
     ctx.strokeStyle = "black"
     ctx.lineWidth = 5
     ctx.font = "25px Arial"
-    ctx.strokeRect(xi*scale,Math.floor(((yi / 100) * canv.height)/scale) * scale, scale, scale)
-    ctx.fillText(JSON.stringify(scene[xi][yi]),xi*scale + 10,Math.floor(((yi / 100) * canv.height)/scale) * scale + 25 + scale)
-    //ctx.fillText(scene[xi][yi].color,xi*scale + 10,Math.floor(((yi / 100) * canv.height)/scale) * scale + 50 + scale)
-    //ctx.fillText(scene[xi][yi].lifetime,xi*scale + 10,Math.floor(((yi / 100) * canv.height)/scale) * scale + 75 + scale)
+    ctx.strokeRect(xic*scale,yic * scale, scale, scale)
+    ctx.fillText(JSON.stringify(scene[xic][yic]),xic*scale + 10,yic * scale + 25 + scale)
+    //ctx.fillText(scene[xic][yic].color,xic*scale + 10,Math.floor(((yic / 100) * canv.height)/scale) * scale + 50 + scale)
+    //ctx.fillText(scene[xic][yic].lifetime,xic*scale + 10,Math.floor(((yic / 100) * canv.height)/scale) * scale + 75 + scale)
     scene = structuredClone(next)
     //console.log(scene)
+
+    lastMouse = mouseDown
 },(1 / 60) * 1000)
